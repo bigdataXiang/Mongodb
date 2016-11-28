@@ -455,3 +455,9 @@ db.runCommand({ findandmodify : "users",
 
 });
 ```
+
+# mongo运行js脚本命令
++ mongo 192.168.6.9:27017/temp_houseprice BasicData_50.js(如果文件不在bin
+  目录下，则指定文件本身的路径即可)
+
+

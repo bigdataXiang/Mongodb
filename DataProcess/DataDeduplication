@@ -1,0 +1,126 @@
+//该文件为房地产数据去重的.js文件，在mongo的bin目录下执行
+//“mongo 192.168.6.9:27017/temp_houseprice 文件名.js”命令即可
+var cn=["BasicData_Resold_50"]//需要处理的数据集名称数组
+for (var i in cn) {
+  var duplicates = [];
+  db[cn[i]].aggregate([
+  {
+      /*根据"source"进行分组，分组得到的记录包含三个字段，相同链接（意味着相同公司）将被分到同一组
+        ，指定"_id"字段为“source”字段 "dups" 是一个数组，记录划分到改组的原始记录的_id, "count"字段记录分到改组的记录数。*/
+        $group: {
+          _id: {
+            year: "$year",
+			month:"$month",
+			price:"$price",
+			area:"$area",
+			community:"$community",
+			house_type:"$house_type",
+			direction:"$direction",
+			flooron:"$flooron",
+			floors:"$floors",
+          },
+          dups: {
+            "$addToSet": "$_id"
+          },
+          count: {
+            "$sum": 1
+          }
+        }
+      }
+
+      , {
+      	//新分组里面 "count"字段大于1的说明有重复，因此仅仅匹配出这一部分进行处理
+        $match: {
+          count: {
+            "$gt": 1
+          }
+        }
+      }], {
+        allowDiskUse: true
+      } //允许使用磁盘存储临时数据，数据较大时加快速度
+    )
+    .forEach(function(doc) {
+      doc.dups.shift(); //第一个保留，剩下的删
+      doc.dups.forEach(function(dupId) {
+        duplicates.push(dupId); // 把冗余的_id添加到一个数组中，最后批量删除，快。
+      })
+    })
+
+  print(duplicates.length);
+
+  // 一次性删除所有冗余的记录
+  try {
+    db[cn[i]].remove({
+      _id: {
+        $in: duplicates
+      }
+    })
+  } catch (err) {
+  	//出错是因为
+	//无论如何无法逃避文档大小不超过16MB的限制，
+	//因此当duplicates中对应的冗余数据大于16MB时，要拆分成好几部分分别进行删除
+	//分多少组需要根据实际情况估计和测试。
+    var part_1 = duplicates.slice(0, parseInt(duplicates.length / 10));
+    var part_2 = duplicates.slice(parseInt(duplicates.length / 10), parseInt(2 * duplicates.length / 10));
+    var part_3 = duplicates.slice(parseInt(2 * duplicates.length / 10), parseInt(3 * duplicates.length / 10));
+    var part_4 = duplicates.slice(parseInt(3 * duplicates.length / 10), parseInt(4*duplicates.length/10));
+    var part_5 = duplicates.slice(parseInt(4 * duplicates.length / 10), parseInt(5*duplicates.length/10));
+    var part_6 = duplicates.slice(parseInt(5 * duplicates.length / 10), parseInt(6*duplicates.length/10));
+    var part_7 = duplicates.slice(parseInt(6 * duplicates.length / 10), parseInt(7*duplicates.length/10));
+    var part_8 = duplicates.slice(parseInt(7 * duplicates.length / 10), parseInt(8*duplicates.length/10));
+    var part_9 = duplicates.slice(parseInt(8 * duplicates.length / 10), parseInt(9*duplicates.length/10));
+    var part_10 = duplicates.slice(parseInt(9 * duplicates.length / 10), parseInt(duplicates.length));
+    db[cn[i]].remove({
+      _id: {
+        $in: part_1
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_2
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_3
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_4
+      }
+    })
+
+    db[cn[i]].remove({
+      _id: {
+        $in: part_5
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_6
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_7
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_8
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_9
+      }
+    })
+    db[cn[i]].remove({
+      _id: {
+        $in: part_10
+      }
+    })
+    print("done!")
+  }
+}
